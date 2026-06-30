@@ -1,0 +1,86 @@
+name: Build and Push Docker Images
+
+on:
+  push: 
+   branches: [ master]
+  pull_request:
+    branches: [ master ]
+  
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  APP_IMAGE: blood-bankapp
+  DB_IMAGE: blood-bankdb
+
+jobs:
+  build-and-push:
+
+    runs-on: self-hosted
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Image Tag
+        run: |
+          echo "IMAGE_TAG=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Docker Login
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+          -u "${{ secrets.DOCKER_USERNAME }}" \
+          --password-stdin
+
+      ##################################################
+      # Build Application Image
+      ##################################################
+
+      - name: Build Application Image
+        run: |
+          docker build \
+          -t $DOCKER_USERNAME/$APP_IMAGE:${IMAGE_TAG} \
+          .
+
+      ##################################################
+      # Build Database Image
+      ##################################################
+
+      - name: Build Database Image
+        run: |
+          docker build \
+          -t $DOCKER_USERNAME/$DB_IMAGE:${IMAGE_TAG} \
+          ./database
+
+      ##################################################
+      # Verify Images
+      ##################################################
+
+      - name: Verify Local Images
+        run: |
+          docker images
+
+      ##################################################
+      # Push Application Image
+      ##################################################
+
+      - name: Push Application Image
+        run: |
+          docker push $DOCKER_USERNAME/$APP_IMAGE:${IMAGE_TAG}
+
+      ##################################################
+      # Push Database Image
+      ##################################################
+
+      - name: Push Database Image
+        run: |
+          docker push $DOCKER_USERNAME/$DB_IMAGE:${IMAGE_TAG}
+
+      ##################################################
+      # Cleanup Runner
+      ##################################################
+
+      - name: Remove Local Images
+        if: always()
+        run: |
+          docker rmi $DOCKER_USERNAME/$APP_IMAGE:${IMAGE_TAG} || true
+          docker rmi $DOCKER_USERNAME/$DB_IMAGE:${IMAGE_TAG} || true
