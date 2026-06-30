@@ -47,9 +47,10 @@ jobs:
 
       - name: Build Database Image
         run: |
-          docker build \
-          -t $DOCKER_USERNAME/$DB_IMAGE:${IMAGE_TAG} \
-          ./database
+         docker build \
+         --build-arg MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+         -t $DOCKER_USERNAME/blood-bankdb:${IMAGE_TAG} \
+         ./database
 
       ##################################################
       # Verify Images
