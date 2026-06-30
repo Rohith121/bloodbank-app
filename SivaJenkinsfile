@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+    stages {
+        stage('code') {
+            steps {
+                git "https://github.com/sivakumarkalava/ltibbhackathon.git"
+            }
+        }
+        stage ("CQA") {
+            environment {
+                scannerHome = tool 'mysonar'
+            }
+            steps {
+                withSonarQubeEnv('mysonar') {
+                    sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=Myproject"
+                }
+            }
+        }
+        stage ("Image") {
+            steps {
+                sh "docker build -t sivadockerz/mybloodbank:db database"
+                sh "docker build -t sivadockerz/mybloodbank:app ."
+            }
+        }
+        stage ("Scan") {
+            steps {
+                sh "trivy image sivadockerz/mybloodbank:db"
+                sh "trivy image sivadockerz/mybloodbank:app"
+            }
+        }
+        stage ("Registry") {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'Dockercreds') {
+                        sh "docker push sivadockerz/mybloodbank:db"
+                        sh "docker push sivadockerz/mybloodbank:app"
+                    }
+                }
+            }
+        }
+        stage ("Deploy") {
+            steps {
+                sh 'docker run -itd --name mysqldb -p 3306:3306 sivadockerz/mybloodbank:db'
+                sh 'docker run -itd --name myapp -p 1234:80 --link mysqldb:mysqlcon sivadockerz/mybloodbank:app'
+            }
+        }
+    }
+}
