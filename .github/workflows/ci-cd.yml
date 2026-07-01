@@ -1,4 +1,4 @@
-name: CI-CD Pipeline
+name: BloodBank CI-CD
 
 on:
   push:
@@ -14,9 +14,9 @@ env:
 
 jobs:
 
-#############################################################################
+####################################################################################
 # CI
-#############################################################################
+####################################################################################
 
   build:
 
@@ -27,73 +27,65 @@ jobs:
 
     steps:
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - name: Checkout Source
+      uses: actions/checkout@v4
 
-      ##############################################################
-      # Generate Image Tag
-      ##############################################################
+    ########################################################
+    # Generate Image Tag
+    ########################################################
 
-      - name: Generate Image Tag
-        id: tag
-        run: |
-          IMAGE_TAG=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+    - name: Generate Image Tag
+      id: tag
+      run: |
+        IMAGE_TAG=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      ##############################################################
-      # Docker Login
-      ##############################################################
+    ########################################################
+    # Docker Login
+    ########################################################
 
-      - name: Docker Login
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
-          -u "${{ secrets.DOCKER_USERNAME }}" \
-          --password-stdin
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+        -u "${{ secrets.DOCKER_USERNAME }}" \
+        --password-stdin
 
-      ##############################################################
-      # Build Application Image
-      ##############################################################
+    ########################################################
+    # Build Application Image
+    ########################################################
 
-      - name: Build App Image
-        run: |
-          docker build \
-          -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} \
-          .
+    - name: Build App Image
+      run: |
+        docker build \
+        -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} .
 
-      ##############################################################
-      # Build Database Image
-      ##############################################################
+    ########################################################
+    # Build Database Image
+    ########################################################
 
-      - name: Build Database Image
-        run: |
-          docker build \
-          -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
-          ./database
+    - name: Build Database Image
+      run: |
+        docker build \
+        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
+        ./database
 
-      ##############################################################
-      # Verify Images
-      ##############################################################
+    ########################################################
+    # Push Images
+    ########################################################
 
-      - name: Verify Images
-        run: docker images
+    - name: Push App Image
+      run: |
+        docker push \
+        $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
 
-      ##############################################################
-      # Push Images
-      ##############################################################
+    - name: Push DB Image
+      run: |
+        docker push \
+        $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
 
-      - name: Push Application Image
-        run: |
-          docker push \
-          $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
-
-      - name: Push Database Image
-        run: |
-          docker push \
-          $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
-
-#############################################################################
+####################################################################################
 # CD
-#############################################################################
+####################################################################################
 
   deploy:
 
@@ -106,94 +98,104 @@ jobs:
 
     steps:
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
+    ########################################################
+    # Configure SSH
+    ########################################################
 
-          echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
+    - name: Configure SSH
+      run: |
 
-          chmod 600 ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
 
-          ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
+        echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
 
-      ##############################################################
-      # Verify Cluster
-      ##############################################################
+        chmod 600 ~/.ssh/id_rsa
 
-      - name: Verify Cluster
-        run: |
-          ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+        ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
 
-          kubectl get nodes
+    ########################################################
+    # Verify Cluster
+    ########################################################
 
-          kubectl get pods -n $NAMESPACE
+    - name: Verify Kubernetes Cluster
+      run: |
 
-          "
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
 
-      ##############################################################
-      # Update Application
-      ##############################################################
+        kubectl get nodes
 
-      - name: Deploy Application
-        run: |
-          ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+        kubectl get pods -n $NAMESPACE
 
-          echo 'Updating Application'
+        "
 
-          kubectl set image deployment/bloodbank-app \
-          bloodbank-app=$DOCKER_USERNAME/$APP_IMAGE:$IMAGE_TAG \
-          -n $NAMESPACE
+    ########################################################
+    # Update Application
+    ########################################################
 
-          kubectl rollout status deployment/bloodbank-app \
-          -n $NAMESPACE
+    - name: Deploy BloodBank App
+      run: |
 
-          "
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
 
-      ##############################################################
-      # Update Database
-      ##############################################################
+        echo 'Updating BloodBank Application'
 
-      - name: Deploy Database
-        run: |
-          ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+        kubectl set image deployment/bloodbank-app \
+        bloodbank-app=$DOCKER_USERNAME/$APP_IMAGE:$IMAGE_TAG \
+        -n $NAMESPACE
 
-          echo 'Updating Database'
+        kubectl rollout status deployment/bloodbank-app \
+        -n $NAMESPACE
 
-          kubectl set image statefulset/bloodbank-db \
-          bloodbank-db=$DOCKER_USERNAME/$DB_IMAGE:$IMAGE_TAG \
-          -n $NAMESPACE
+        "
 
-          kubectl rollout status statefulset/bloodbank-db \
-          -n $NAMESPACE
+    ########################################################
+    # Update Database
+    ########################################################
 
-          "
+    - name: Deploy MySQL StatefulSet
+      run: |
 
-      ##############################################################
-      # Verify Deployment
-      ##############################################################
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
 
-      - name: Verify Deployment
-        run: |
-          ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+        echo 'Updating MySQL'
 
-          kubectl get pods -n $NAMESPACE
+        kubectl set image statefulset/bloodbank-db \
+        bloodbank-db=$DOCKER_USERNAME/$DB_IMAGE:$IMAGE_TAG \
+        -n $NAMESPACE
 
-          kubectl get svc -n $NAMESPACE
+        kubectl rollout status statefulset/bloodbank-db \
+        -n $NAMESPACE
 
-          kubectl get ingress -n $NAMESPACE
+        "
 
-          "
+    ########################################################
+    # Verify Deployment
+    ########################################################
 
-      ##############################################################
-      # Rollback
-      ##############################################################
+    - name: Verify Deployment
+      run: |
 
-      - name: Rollback Application
-        if: failure()
-        run: |
-          ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
 
-          kubectl rollout undo deployment/bloodbank-app \
-          -n $NAMESPACE
+        kubectl get pods -n $NAMESPACE
 
-          "
+        kubectl get svc -n $NAMESPACE
+
+        kubectl get ingress -n $NAMESPACE
+
+        "
+
+    ########################################################
+    # Rollback
+    ########################################################
+
+    - name: Rollback Application
+      if: failure()
+      run: |
+
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+
+        kubectl rollout undo deployment/bloodbank-app \
+        -n $NAMESPACE
+
+        "
