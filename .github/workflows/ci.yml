@@ -41,22 +41,28 @@ jobs:
     - name: Build App
       run: |
         docker build \
-        -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} .
+        -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} \
+         -t $DOCKER_USERNAME/$APP_IMAGE:v1 \
+        .
 
     - name: Push App
       run: |
         docker push \
         $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_USERNAME/$APP_IMAGE:v1
 
     - name: Build DB
       run: |
         docker build \
-        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} ./database
+        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} 
+        -t $DOCKER_USERNAME/$APP_IMAGE:v1 \
+        ./database
 
     - name: Push DB
       run: |
         docker push \
         $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_USERNAME/$APP_IMAGE:v1
   deploy:
 
     needs: build
