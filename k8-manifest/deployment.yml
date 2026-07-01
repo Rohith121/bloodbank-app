@@ -32,46 +32,18 @@ spec:
 
       - name: bloodbank-app
 
-        image: rohith35/blood-bankapp:initial
+        image: rohith35/blood-bankapp:v1
 
         imagePullPolicy: Always
 
         ports:
         - containerPort: 80
 
-        env:
-        - name: DB_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: bankapp-config
-              key: DB_HOST
-
-        - name: DB_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: bankapp-config
-              key: DB_PORT
-
-        - name: DB_NAME
-          valueFrom:
-            secretKeyRef:
-              name: mysql-secret
-              key: DB_NAME
-
-        - name: DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: mysql-secret
-              key: DB_USERNAME
-
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-secret
-              key: DB_PASSWORD
-
+        envfrom:
+        - configMapRef:
+            name: bloodbank-config
+            
         resources:
-
           requests:
             cpu: "250m"
             memory: "256Mi"
