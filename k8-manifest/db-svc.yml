@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: bloodbank-db
+  namespace: bloodbank
+
+spec:
+  clusterIP: None
+
+  selector:
+    app: bloodbank-db
+
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306

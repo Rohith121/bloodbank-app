@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: bloodbank-db
+  namespace: bloodbank
+  labels:
+    app: bloodbank-db
+
+spec:
+  serviceName: bloodbank-db
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: bloodbank-db
+
+  updateStrategy:
+    type: RollingUpdate
+
+  template:
+    metadata:
+      labels:
+        app: bloodbank-db
+
+    spec:
+
+      terminationGracePeriodSeconds: 30
+
+      imagePullSecrets:
+      - name: dockerhub-secret
+
+      securityContext:
+        fsGroup: 999
+
+      containers:
+
+      - name: mysql
+
+        image: rohith35/blood-bankdb:initial
+
+        imagePullPolicy: Always
+
+        ports:
+        - containerPort: 3306
+
+        env:
+
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: bloodbank-db-secret
+              key: MYSQL_ROOT_PASSWORD
+
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: bloodbank-db-secret
+              key: MYSQL_DATABASE
+
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: bloodbank-db-secret
+              key: MYSQL_USER
+
+        resources:
+
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+
+        volumeMounts:
+
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+
+        readinessProbe:
+
+          tcpSocket:
+            port: 3306
+
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        livenessProbe:
+
+          tcpSocket:
+            port: 3306
+
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+
+      resources:
+        requests:
+          storage: 5Gi

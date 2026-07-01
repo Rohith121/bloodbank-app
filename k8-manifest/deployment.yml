@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: bloodbank-app
+  namespace: bloodbank
+  labels:
+    app: bloodbank-app
+
+spec:
+  replicas: 2
+
+  revisionHistoryLimit: 10
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+  selector:
+    matchLabels:
+      app: bloodbank-app
+
+  template:
+    metadata:
+      labels:
+        app: bloodbank-app
+
+    spec:
+      containers:
+
+      - name: bloodbank-app
+
+        image: rohith35/blood-bankapp:initial
+
+        imagePullPolicy: Always
+
+        ports:
+        - containerPort: 80
+
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: bankapp-config
+              key: DB_HOST
+
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: bankapp-config
+              key: DB_PORT
+
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: DB_NAME
+
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: DB_USERNAME
+
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: DB_PASSWORD
+
+        resources:
+
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+        readinessProbe:
+
+          httpGet:
+            path: /
+            port: 80
+
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+
+        livenessProbe:
+
+          httpGet:
+            path: /
+            port: 80
+
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3

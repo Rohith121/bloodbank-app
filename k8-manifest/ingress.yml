@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: bloodbank-ingress
+  namespace: bloodbank
+
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+spec:
+
+  ingressClassName: nginx
+
+  tls:
+
+  - hosts:
+    - bloodbank.local
+
+    secretName: bloodbank-tls
+
+  rules:
+
+  - host: bloodbank.local
+
+    http:
+
+      paths:
+
+      - path: /
+
+        pathType: Prefix
+
+        backend:
+          service:
+            name: bloodbank-app-service
+            port:
+              number: 80
