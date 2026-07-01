@@ -1,0 +1,59 @@
+name: CI-CD
+
+on:
+  push:
+    branches: [ master ]
+  pull_request: 
+    branches: [ master ]
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  APP_IMAGE: blood-bankapp
+  DB_IMAGE: blood-bankdb
+  NAMESPACE: bloodbank
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    outputs:
+      IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Generate Image Tag
+      id: tag
+      run: |
+        DATE=$(date +'%Y%m%d')
+        IMAGE_TAG=$DATE.${{ github.run_number }}
+
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+        -u "${{ secrets.DOCKER_USERNAME }}" \
+        --password-stdin
+
+    - name: Build App
+      run: |
+        docker build \
+        -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} .
+
+    - name: Push App
+      run: |
+        docker push \
+        $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
+
+    - name: Build DB
+      run: |
+        docker build \
+        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} ./database
+
+    - name: Push DB
+      run: |
+        docker push \
+        $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
