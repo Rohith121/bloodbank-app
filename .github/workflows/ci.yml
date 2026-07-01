@@ -1,87 +1,128 @@
-name: Build and Push Docker Images
+name: CI-CD
 
 on:
-  push: 
-   branches: [ master]
-  pull_request:
+  push:
     branches: [ master ]
-  
+  pull_request: 
+    branches: [ master ]
+
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   APP_IMAGE: blood-bankapp
   DB_IMAGE: blood-bankdb
+  NAMESPACE: bloodbank
 
 jobs:
-  build-and-push:
+  build:
 
     runs-on: self-hosted
 
+    outputs:
+      IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+
     steps:
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Generate Image Tag
-        run: |
-          echo "IMAGE_TAG=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+    - name: Generate Image Tag
+      id: tag
+      run: |
+        DATE=$(date +'%Y%m%d')
+        IMAGE_TAG=$DATE.${{ github.run_number }}
 
-      - name: Docker Login
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
-          -u "${{ secrets.DOCKER_USERNAME }}" \
-          --password-stdin
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      ##################################################
-      # Build Application Image
-      ##################################################
+    - name: Docker Login
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
+        -u "${{ secrets.DOCKER_USERNAME }}" \
+        --password-stdin
 
-      - name: Build Application Image
-        run: |
-          docker build \
-          -t $DOCKER_USERNAME/$APP_IMAGE:${IMAGE_TAG} \
-          .
+    - name: Build App
+      run: |
+        docker build \
+        -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} \
+         -t $DOCKER_USERNAME/$APP_IMAGE:v1 \
+        .
 
-      ##################################################
-      # Build Database Image
-      ##################################################
+    - name: Push App
+      run: |
+        docker push \
+        $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_USERNAME/$APP_IMAGE:v1
 
-      - name: Build Database Image
-        run: |
-         docker build \
-         --build-arg MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
-         -t $DOCKER_USERNAME/blood-bankdb:${IMAGE_TAG} \
-         ./database
+    - name: Build DB
+      run: |
+        docker build \
+        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
+        -t $DOCKER_USERNAME/$DB_IMAGE:v1 \
+        ./database
 
-      ##################################################
-      # Verify Images
-      ##################################################
+    - name: Push DB
+      run: |
+        docker push \
+        $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_USERNAME/$DB_IMAGE:v1
+  deploy:
 
-      - name: Verify Local Images
-        run: |
-          docker images
+    needs: build
 
-      ##################################################
-      # Push Application Image
-      ##################################################
+    runs-on: self-hosted
 
-      - name: Push Application Image
-        run: |
-          docker push $DOCKER_USERNAME/$APP_IMAGE:${IMAGE_TAG}
+    env:
+      IMAGE_TAG: ${{ needs.build.outputs.IMAGE_TAG }}
 
-      ##################################################
-      # Push Database Image
-      ##################################################
+    steps:
 
-      - name: Push Database Image
-        run: |
-          docker push $DOCKER_USERNAME/$DB_IMAGE:${IMAGE_TAG}
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
 
-      ##################################################
-      # Cleanup Runner
-      ##################################################
+        echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
 
-      - name: Remove Local Images
-        if: always()
-        run: |
-          docker rmi $DOCKER_USERNAME/$APP_IMAGE:${IMAGE_TAG} || true
-          docker rmi $DOCKER_USERNAME/$DB_IMAGE:${IMAGE_TAG} || true
+        chmod 600 ~/.ssh/id_rsa
+
+        ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy Application
+      run: |
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+
+        kubectl set image deployment/bloodbank-app \
+        bloodbank-app=$DOCKER_USERNAME/$APP_IMAGE:$IMAGE_TAG \
+        -n $NAMESPACE
+
+        kubectl rollout status deployment/bloodbank-app -n $NAMESPACE
+
+        "
+
+    - name: Deploy Database
+      run: |
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+
+        kubectl set image statefulset/bloodbank-db \
+        mysql=$DOCKER_USERNAME/$DB_IMAGE:$IMAGE_TAG \
+        -n $NAMESPACE
+
+        kubectl rollout status statefulset/bloodbank-db -n $NAMESPACE
+
+        "
+
+    - name: Verify
+      run: |
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+
+        kubectl get pods -n $NAMESPACE
+        kubectl get svc -n $NAMESPACE
+        kubectl get ingress -n $NAMESPACE
+
+        "
+
+    - name: Rollback
+      if: failure()
+      run: |
+        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+
+        kubectl rollout undo deployment/bloodbank-app -n $NAMESPACE
+
+        "

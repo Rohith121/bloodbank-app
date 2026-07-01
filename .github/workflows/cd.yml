@@ -1,112 +1,112 @@
-name: CD - Deploy to Kubernetes
+# name: CD - Deploy to Kubernetes
 
-on:
-  workflow_run:
-    workflows: ["Build and Push Docker Images"]
-    types:
-      - completed
+# on:
+#   workflow_run:
+#     workflows: ["Build and Push Docker Images"]
+#     types:
+#       - completed
 
-env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  APP_IMAGE: blood-bankapp
-  DB_IMAGE: blood-bankdb
+# env:
+#   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+#   APP_IMAGE: blood-bankapp
+#   DB_IMAGE: blood-bankdb
 
-jobs:
-  deploy:
+# jobs:
+#   deploy:
 
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+#     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
-    runs-on: self-hosted
+#     runs-on: self-hosted
 
-    steps:
+#     steps:
 
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+#     - name: Checkout Repository
+#       uses: actions/checkout@v4
 
-    - name: Generate Image Tag
-      run: |
-        echo "IMAGE_TAG=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+#     - name: Generate Image Tag
+#       run: |
+#         echo "IMAGE_TAG=$(date +'%Y%m%d')-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-    ####################################################
-    # Configure SSH
-    ####################################################
+#     ####################################################
+#     # Configure SSH
+#     ####################################################
 
-    - name: Configure SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
+#     - name: Configure SSH
+#       run: |
+#         mkdir -p ~/.ssh
+#         echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
+#         chmod 600 ~/.ssh/id_rsa
+#         ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
 
-    ####################################################
-    # Verify Cluster Connectivity
-    ####################################################
+#     ####################################################
+#     # Verify Cluster Connectivity
+#     ####################################################
 
-    - name: Verify Kubernetes Cluster
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl get nodes
-        "
+#     - name: Verify Kubernetes Cluster
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl get nodes
+#         "
 
-    ####################################################
-    # Deploy Application
-    ####################################################
+#     ####################################################
+#     # Deploy Application
+#     ####################################################
 
-    - name: Update Application Image
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl set image deployment/bloodbank-app \
-        bloodbank-app=$DOCKER_USERNAME/$APP_IMAGE:$IMAGE_TAG \
-        -n bloodbank
-        "
+#     - name: Update Application Image
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl set image deployment/bloodbank-app \
+#         bloodbank-app=$DOCKER_USERNAME/$APP_IMAGE:$IMAGE_TAG \
+#         -n bloodbank
+#         "
 
-    ####################################################
-    # Deploy Database
-    ####################################################
+#     ####################################################
+#     # Deploy Database
+#     ####################################################
 
-    - name: Update Database Image
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl set image statefulset/bloodbank-db \
-        mysql=$DOCKER_USERNAME/$DB_IMAGE:$IMAGE_TAG \
-        -n bloodbank
-        "
+#     - name: Update Database Image
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl set image statefulset/bloodbank-db \
+#         mysql=$DOCKER_USERNAME/$DB_IMAGE:$IMAGE_TAG \
+#         -n bloodbank
+#         "
 
-    ####################################################
-    # Wait for Rollout
-    ####################################################
+#     ####################################################
+#     # Wait for Rollout
+#     ####################################################
 
-    - name: Verify Deployment Rollout
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl rollout status deployment/bloodbank-app -n bloodbank
-        "
+#     - name: Verify Deployment Rollout
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl rollout status deployment/bloodbank-app -n bloodbank
+#         "
 
-    - name: Verify StatefulSet Rollout
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl rollout status statefulset/bloodbank-db -n bloodbank
-        "
+#     - name: Verify StatefulSet Rollout
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl rollout status statefulset/bloodbank-db -n bloodbank
+#         "
 
-    ####################################################
-    # Verify Resources
-    ####################################################
+#     ####################################################
+#     # Verify Resources
+#     ####################################################
 
-    - name: Verify Kubernetes Resources
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl get pods -n bloodbank
-        kubectl get svc -n bloodbank
-        kubectl get ingress -n bloodbank
-        "
+#     - name: Verify Kubernetes Resources
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl get pods -n bloodbank
+#         kubectl get svc -n bloodbank
+#         kubectl get ingress -n bloodbank
+#         "
 
-    ####################################################
-    # Rollback if Deployment Fails
-    ####################################################
+#     ####################################################
+#     # Rollback if Deployment Fails
+#     ####################################################
 
-    - name: Rollback Deployment
-      if: failure()
-      run: |
-        ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
-        kubectl rollout undo deployment/bloodbank-app -n bloodbank
-        "
+#     - name: Rollback Deployment
+#       if: failure()
+#       run: |
+#         ssh ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} "
+#         kubectl rollout undo deployment/bloodbank-app -n bloodbank
+#         "
