@@ -54,7 +54,7 @@ jobs:
     - name: Build DB
       run: |
         docker build \
-        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} 
+        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
         -t $DOCKER_USERNAME/$DB_IMAGE:v1 \
         ./database
 
