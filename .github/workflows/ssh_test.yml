@@ -1,0 +1,24 @@
+name: Test SSH
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ssh:
+
+    runs-on: self-hosted
+
+    steps:
+
+      - name: Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Test SSH Connection
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} \
+          "hostname && whoami && kubectl get nodes"
