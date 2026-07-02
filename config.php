@@ -1,14 +1,13 @@
 <?php
-
 session_start();
 
-$host = "bloodbank-db"; /* Host name */
-$user = "root"; /* User */
-$password = "admin123"; /* Password */
-$dbname = "customers"; /* Database name */
+$host = "bloodbank-db";
+$user = "root";
+$password = "Admin@123";
+$dbname = "bloodbank";
 
-$con = mysqli_connect($host, $user, $password,$dbname);
-// Check connection
-if (!$con) {
- die("Connection failed: " . mysqli_connect_error());
+$con = mysqli_connect($host,$user,$password,$dbname);
+
+if(!$con){
+    die(mysqli_connect_error());
 }
