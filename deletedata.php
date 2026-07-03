@@ -54,10 +54,10 @@ table, th, td {
   background-color: pink;
 }
 </style>
-    <title>Find-Donor - LTIBB</title>
-    <meta property="og:title" content="Find-Donor - LTIBB" />
-    <meta property="og:title" content="Blood-Donation-Chart - LTIBB" />
-    <meta property="og:title" content="Donate-Blood - LTIBB" />
+    <title>Find-Donor - Adtech</title>
+    <meta property="og:title" content="Find-Donor - Adtech" />
+    <meta property="og:title" content="Blood-Donation-Chart - Adtech" />
+    <meta property="og:title" content="Donate-Blood - Adtech" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="utf-8" />

@@ -67,8 +67,8 @@ class script{
 
 <html lang="en">
   <head>
-    <title>Donate-Blood - LTIBB</title>
-    <meta property="og:title" content="Donate-Blood - LTIBB" />
+    <title>Donate-Blood - Adtech</title>
+    <meta property="og:title" content="Donate-Blood - Adtech" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="utf-8" />
