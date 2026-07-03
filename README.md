@@ -18,7 +18,7 @@ sudo apt-get install mysql-server -y
 
 # Connecting to My SQL Database
 
-mysql -h mysqldb2022.cqyjl3sbn0g1.us-west-2.rds.amazonaws.com -u admin -p
+mysql -h mysql2022.cqyjl3sbn0g1.us-west-2.rds.amazonaws.com -u admin -p
 
 # Create Database
 Create database customers;

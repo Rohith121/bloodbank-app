@@ -26,10 +26,10 @@ if(isset($_POST['but_logout'])){
 </html>
 
 <?php
-$servername = "mysqldb";
+$servername = "bloodbank-db";
 $username = "root";
-$password = "admin123";
-$dbname = "customers";
+$password = "Admin@123";
+$dbname = "bloodbank";
 
 
 // Create connection

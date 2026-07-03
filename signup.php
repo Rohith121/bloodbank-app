@@ -5,10 +5,10 @@ class script{
 
         public function __construct(){
 
-                $server = "mysqldb";
+                $server = "bloodbank-db";
                 $user = "root";
-                $pass = "admin123";
-                $db = "customers";
+                $pass = "Admin@123";
+                $db = "bloodbank";
 
                 $this->con = mysqli_connect($server,$user,$pass,$db) or die("unable to connect");
         }
