@@ -51,26 +51,3 @@ spec:
           limits:
             cpu: "500m"
             memory: "512Mi"
-
-        readinessProbe:
-
-          httpGet:
-            path: /
-            port: 80
-
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 2
-          successThreshold: 1
-          failureThreshold: 3
-
-        livenessProbe:
-
-          httpGet:
-            path: /
-            port: 80
-
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 2
-          failureThreshold: 3
