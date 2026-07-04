@@ -106,7 +106,7 @@ table, th, td {
           <div class="find-donor-hero section-container">
             <div class="find-donor-max-width max-content-container">
               <div class="find-donor-content-container">
-                <span class="find-donor-text">LTI Blood Bank</span>
+                <span class="find-donor-text">Adtech Blood Bank</span>
                 <a href="find-donor.php" class="find-donor-navlink">
                   <div class="find-donor-card">
                     <h4 class="find-donor-text01 heading4">Find Donor</h4>
@@ -211,7 +211,7 @@ $conn->close();
                   <div class="find-donor-right-side">
                     <span class="find-donor-testimonial">
                       Blood donation is an extremely noble deed, yet there is a
-                      scarcity of regular donors across LTI. We focus on
+                      scarcity of regular donors across Adtech. We focus on
                       creating &amp; expanding a virtual army of blood donating
                       volunteers who could be searched and contacted by
                       family/care givers of a patient in times of need.

@@ -146,7 +146,7 @@ class script{
           <div class="donate-blood-hero section-container">
             <div class="donate-blood-max-width max-content-container">
               <div class="donate-blood-content-container">
-                <span class="donate-blood-text">LTI Blood Bank</span>
+                <span class="donate-blood-text">Adtech Blood Bank</span>
                 <div class="donate-blood-card">
                   <h4 class="donate-blood-text01 heading4">Donate Blood</h4>
                   <svg viewBox="0 0 1024 1024" class="donate-blood-icon">
@@ -282,7 +282,7 @@ if(isset($_POST['sub'])){
                   <div class="donate-blood-right-side">
                     <span class="donate-blood-testimonial">
                       Blood donation is an extremely noble deed, yet there is a
-                      scarcity of regular donors across LTI. We focus on
+                      scarcity of regular donors across Adtech. We focus on
                       creating &amp; expanding a virtual army of blood donating
                       volunteers who could be searched and contacted by
                       family/care givers of a patient in times of need.

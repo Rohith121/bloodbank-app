@@ -1,246 +1,483 @@
-# ltibloodbank
+# 🩸 Blood Bank Application
 
-# Setting up Ubuntu Machine
- 
-sudo apt-get update -y
+A PHP + MySQL based Blood Bank Management System deployed on Kubernetes using Docker, GitHub Actions CI/CD, StatefulSets, Deployments, ConfigMaps, Secrets, Persistent Volumes, and Services.
 
-sudo apt-get install apache2 -y
+---
 
-sudo apt-get install php libapache2-mod-php php-mysql php-curl php-gd php-json php-zip php-mbstring -y
+# 📌 Architecture
 
-sudo systemctl restart apache2
+```
+                    Browser
+                       │
+                       ▼
+               NodePort / Ingress
+                       │
+                       ▼
+              bloodbank-app-service
+                 (ClusterIP)
+                       │
+                 Deployment
+                 (PHP + Apache)
+                       │
+                       ▼
+                 CoreDNS Lookup
+              bloodbank-db Service
+                 (ClusterIP)
+                       │
+                  StatefulSet
+                      MySQL
+                       │
+                Persistent Volume
+```
 
-sudo systemctl enable apache2
+---
 
-sudo apt-get install mysql-server -y
+# 🚀 Technologies Used
 
---------------------------------------------------------------------------------------------------------------------
+- PHP 7.2
+- Apache
+- MySQL 8
+- Docker
+- Docker Hub
+- Kubernetes
+- GitHub Actions
+- StatefulSet
+- Deployment
+- ConfigMap
+- Secret
+- Persistent Volume
+- NodePort
+- Ingress (Optional)
 
-# Connecting to My SQL Database
+---
 
-mysql -h mysql2022.cqyjl3sbn0g1.us-west-2.rds.amazonaws.com -u admin -p
+# 📂 Project Structure
 
-# Create Database
-Create database customers;
+```
+bloodbank/
+│
+├── app/
+│   ├── index.php
+│   ├── signup.php
+│   ├── config.php
+│   ├── search.php
+│   ├── donate-blood.php
+│   └── ...
+│
+├── database/
+│   ├── Dockerfile
+│   └── init.sql
+│
+├── kubernetes/
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── secret.yaml
+│   ├── app-deployment.yaml
+│   ├── db-statefulset.yaml
+│   ├── app-service.yaml
+│   ├── db-service.yaml
+│   ├── ingress.yaml
+│   └── pvc.yaml
+│
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml
+│
+├── Dockerfile
+└── README.md
+```
 
-#use DB
+---
 
-use customers;
+# ⚙️ Prerequisites
 
-# Create table 
-create table donors(id int AUTO_INCREMENT primary key, fname varchar(255) NOT NULL , lname varchar(255) NOT NULL , mobileno BIGINT UNIQUE, city varchar(255) NOT NULL, bfrom date, bto date, dob date, bloodgroup varchar(255) NOT NULL);
+- Docker
+- Kubernetes Cluster
+- kubectl
+- Git
+- Docker Hub Account
+- GitHub Repository
 
-# Insert Values to donors table
+---
 
-INSERT INTO `donors` (`fname`, `lname`, `mobileno`, `city`, `bfrom`, `bto`, `dob`, `bloodgroup`) VALUES
-('Srikanth', 'Koraveni', '9000736060', 'Pune', '2022-09-28', '2022-12-28', '1998-05-22', 'O_Positive'),
-('Prashanth', 'Katkam', '7989919097', 'Mumbai', '2022-09-17', '2022-11-18', '1998-09-30', 'O_Positive'),
-('Kranthi', 'Khaitha', '9876789871', 'Bangalore', '2022-09-16', '2022-11-08', '1996-07-02', 'B_Positive'),
-('Srinivas', 'Thota', '9812789411', 'Mumbai', '2022-09-18', '2022-10-31', '1992-07-22', 'O_Positive'),
-('Pandya', 'Loka', '9877787887', 'Mumbai', '2022-09-18', '2022-10-09', '1992-07-22', 'B_Positive'),
-('Prajodh', 'Shreya', '9812444411', 'Mumbai', '2022-08-23', '2022-10-31', '1992-07-22', 'B_Positive'),
-('Srinivas', 'Thota', '9812723411', 'Mumbai', '2022-04-19', '2022-10-07', '1992-07-22', 'B_Positive'), 
-('Zaheer', 'Khan', '7788678987', 'Chennai', '2022-09-11', '2022-12-19', '1998-11-11', 'A_Positive');
+# 🐳 Build Docker Images
 
+Application
 
-# Create table users and assign Values for Signin/Login
+```bash
+docker build -t <dockerhub-username>/blood-bankapp:v1 .
+```
 
-CREATE TABLE `users` (
-  `username` varchar(80) NOT NULL,
-  `name` varchar(80) NOT NULL,
-  `password` varchar(80) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+Database
 
+```bash
+docker build -t <dockerhub-username>/blood-bankdb:v1 ./database
+```
 
-# Assign values to users table
+---
 
-    INSERT INTO `users` (`username`, `name`, `password`) VALUES
-    ('yssyogesh', 'Yogesh Singh', '12345'),
-    ('bsonarika', 'Sonarika Bhadoria', '12345'),
-    ('vishal', 'Vishal Sahu', '12345'),
-    ('prashanth', 'Prashanth Katkam', '12345'),
-    ('vijay', 'Vijay mourya', '12345');
-    
+# 📤 Push Images
 
-# Insert Single Values to a Table
+```bash
+docker login
 
-INSERT INTO `users` (`username`, `name`, `password`) VALUES
-('prashanth', 'Prashanth Katkam', '12345');
+docker push <dockerhub-username>/blood-bankapp:v1
 
+docker push <dockerhub-username>/blood-bankdb:v1
+```
 
-#Admin Table
+---
 
-CREATE TABLE `admin` (
-  `username` varchar(80) NOT NULL,
-  `name` varchar(80) NOT NULL,
-  `password` varchar(80) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+# ☸️ Deploy Kubernetes Resources
 
-#insert into admin table
+Create Namespace
 
-INSERT INTO `admin` (`username`, `name`, `password`) VALUES
-('admin', 'admin', '12345');
+```bash
+kubectl apply -f namespace.yaml
+```
 
-#grant permissions
-GRANT ALL PRIVILEGES ON customers.* TO 'root'@'%' IDENTIFIED BY 'admin123';
+ConfigMap
+
+```bash
+kubectl apply -f configmap.yaml
+```
+
+Secret
+
+```bash
+kubectl apply -f secret.yaml
+```
+
+Persistent Volume
+
+```bash
+kubectl apply -f pvc.yaml
+```
+
+Database
+
+```bash
+kubectl apply -f db-statefulset.yaml
+```
+
+Database Service
+
+```bash
+kubectl apply -f db-service.yaml
+```
+
+Application
+
+```bash
+kubectl apply -f app-deployment.yaml
+```
+
+Application Service
+
+```bash
+kubectl apply -f app-service.yaml
+```
+
+Ingress (Optional)
+
+```bash
+kubectl apply -f ingress.yaml
+```
+
+---
+
+# 📋 Verify Deployment
+
+Pods
+
+```bash
+kubectl get pods -n bloodbank
+```
+
+Services
+
+```bash
+kubectl get svc -n bloodbank
+```
+
+StatefulSet
+
+```bash
+kubectl get statefulset -n bloodbank
+```
+
+Deployment
+
+```bash
+kubectl get deployment -n bloodbank
+```
+
+PVC
+
+```bash
+kubectl get pvc -n bloodbank
+```
+
+Ingress
+
+```bash
+kubectl get ingress -n bloodbank
+```
+
+---
+
+# 🛢 Database Initialization
+
+Login into MySQL
+
+```bash
+kubectl exec -it bloodbank-db-0 -n bloodbank -- mysql -uroot -p
+```
+
+Create Database
+
+```sql
+CREATE DATABASE bloodbank;
+USE bloodbank;
+```
+
+Create Donors Table
+
+```sql
+CREATE TABLE donors(
+id INT AUTO_INCREMENT PRIMARY KEY,
+fname VARCHAR(255),
+lname VARCHAR(255),
+mobileno BIGINT UNIQUE,
+city VARCHAR(255),
+bfrom DATE,
+bto DATE,
+dob DATE,
+bloodgroup VARCHAR(255)
+);
+```
+
+Create Users Table
+
+```sql
+CREATE TABLE users(
+username VARCHAR(80),
+name VARCHAR(80),
+password VARCHAR(80)
+);
+```
+
+Insert Sample Users
+
+```sql
+INSERT INTO users VALUES
+('admin','Administrator','admin123'),
+('prashanth','Prashanth','12345'),
+('vishal','Vishal','12345');
+```
+
+Grant Permission
+
+```sql
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'Admin@123';
+
+GRANT ALL PRIVILEGES ON bloodbank.* TO 'root'@'%';
+
 FLUSH PRIVILEGES;
+```
 
+---
 
-=================================================================================================
-                                #IMP Points
--------------------------------------------------------------------------------------------------
-if connection from linux ec2 to DB is not connecting, then add inbound rule to DB SG as AURORA and assign SG of EC2 Instance.
+# 🔐 ConfigMap Variables
 
+```
+MYSQL_HOST=bloodbank-db
+MYSQL_DATABASE=bloodbank
+```
 
-#DB Endpoint needs to be added
+---
 
-vi donate-blood.php
-vi find-donor.php
-vi config.php
-vi search.php
-vi signup.php
-vi deletedata.php
+# 🔒 Secret Variables
 
-Add admin table name in indexadmin.php
+```
+MYSQL_USER=root
+MYSQL_PASSWORD=Admin@123
+```
 
-Hackathon Repo consists of latest code
+---
 
-# Important Notes To Remember
+# 🔄 GitHub Actions CI/CD
 
-Add Endpoint URL of the DB to the congig.php and also for the pages which need the DB Details
+Pipeline Flow
 
-If the Database or Table name is changes please change it accordingly.
+```
+Developer
 
+↓
 
-Example: donate-blood.php, find-donor.php, config.php, signup.php, search.php {login}.
+Git Push
 
-NOTE: Add donors table name to index.php and add admin table name to indexadmin.php
+↓
 
-===================================================================================================
----------------------------------------------------------------------------------------------------
+GitHub Repository
 
-# Git Commands
+↓
 
-git clone URL
+GitHub Actions
 
-git clone --branch branchname URL
+↓
 
-sudo git init
+Build Docker Images
 
-sudo git remote add origin "https://github.com/prashanthkatam/ltibloodbank.git"
+↓
 
-sudo git remote add origin "https://github.com/prashanthkatam/ltibloodbankrepo.git"
+Push Images to Docker Hub
 
-sudo git remote add origin "https://github.com/prashanthkatam/Hackathon.git"
+↓
 
-sudo git remote -v
+SSH to Kubernetes Master
 
-sudo git add .
+↓
 
-sudo git commit -m ""
+kubectl set image
 
-git remote set-url origin https://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@github.com/prashanthkatam/ltibloodbank.git
+↓
 
-git remote set-url origin https://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@github.com/prashanthkatam/Hackathon.git
+Rolling Update
 
-git remote set-url origin https://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@github.com/prashanthkatam/Hackathon.git
+↓
 
-sudo git push origin master
+Verify Pods
 
-# Upload new files
+↓
 
-sudo git init
+Rollback (If Failed)
+```
 
-sudo git add .
+---
 
-sudo git commit -m ""
+# 📈 Scaling Application
 
-sudo git push origin master
+```bash
+kubectl scale deployment bloodbank-app \
+--replicas=5 \
+-n bloodbank
+```
 
---------------------------------------------------------------------------------------------------------------------
+---
 
-# Install Jenkins
+# 🔄 Rolling Update
 
-sudo apt-get update
+```bash
+kubectl set image deployment/bloodbank-app \
+bloodbank-app=<dockerhub-user>/blood-bankapp:v2 \
+-n bloodbank
+```
 
-sudo apt-get install openjdk-8-jdk
+---
 
-wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+# ↩ Rollback
 
-sudo sh -c 'echo deb https://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+```bash
+kubectl rollout undo deployment bloodbank-app \
+-n bloodbank
+```
 
-sudo apt-get update
+---
 
-sudo apt-get install jenkins
+# 🧪 Troubleshooting
 
-sudo apt install git
+## Check Pods
 
---------------------------------------------------------------------------------------------------------------------
+```bash
+kubectl get pods -n bloodbank
+```
 
-# Push Apache Logs to Cloud Watch
+## Describe Pod
 
-1.	Create an EC2 Instance
+```bash
+kubectl describe pod <pod-name> -n bloodbank
+```
 
-2.	Create a Role with CloudWatchAgentServerPolicy and attach to EC2 Instance.
+## Application Logs
 
-3.	Update the Instance
+```bash
+kubectl logs <app-pod> -n bloodbank
+```
 
-sudo apt-get update
+## Database Logs
 
-4.	Install Apache2 or any other web server on the Ec2 Instance
+```bash
+kubectl logs bloodbank-db-0 -n bloodbank
+```
 
-Sudo apt-get install apache2
+## Exec into Pod
 
-5.	Download the Package using wget
+```bash
+kubectl exec -it <app-pod> -n bloodbank -- bash
+```
 
-sudo wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+## Test Database Connection
 
-6.	Install CloudWatch Agent 
+```bash
+php -r 'include "config.php"; var_dump($con);'
+```
 
-sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
+## Verify Database
 
-7.	Create configuration 
+```sql
+SHOW DATABASES;
 
-vi /opt/aws/amazon-cloudwatch-agent/bin/config.json
+USE bloodbank;
 
-{
-     "agent": {
-         "run_as_user": "root"
-     },    
-     "logs": {
-         "logs_collected": {
-             "files": {
-                 "collect_list": [
-                     {
-                         "file_path": "/var/log/apache2/access.log",
-                         "log_group_name": "myapache-error-log",
-                         "log_stream_name": "{instance_id}"
-                     }
-                 ]
-             }
-         }
-     }
-}
+SHOW TABLES;
+```
 
-8.	Command to Start CloudWatch Service
+---
 
-sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
+# 🌐 Access Application
 
-9.	Now Navigate the AWS Cosole and go to Cloud Watch you can see the log group as mentioned in the config.json and the logs will be flown as the path given in config.json
+Using NodePort
 
-[NOTE: Check for the config.json syntax for the brackets, Create and assign CloudWatchAgentServerPolicy to Instance]
+```
+http://<Node-IP>:<NodePort>
+```
 
---------------------------------------------------------------------------------------------------------------------
+Example
 
-# Important SQL Commands for use
+```
+http://192.168.1.218:30080
+```
 
-DELETE FROM Customers;
+Using Ingress
 
-show columns from donors;
+```
+https://bloodbank.local
+```
 
+(Add hosts file entry if using local Kubernetes.)
 
-<html>
-  <body>
-    Hi this is webpage after making changes in GitHub Repo and CI CD Made visible here
-  </body>
-</html>
+---
+
+# 📌 Kubernetes Resources Used
+
+- Namespace
+- Deployment
+- StatefulSet
+- Service
+- ConfigMap
+- Secret
+- PersistentVolumeClaim
+- Ingress
+- GitHub Actions
+- Docker Hub
+
+---
+
+# 👨‍💻 Author
+
+**Rohith Krish**
+
+DevOps Engineer
+
+**Tech Stack:** Docker • Kubernetes • GitHub Actions • Linux • MySQL • PHP • Apache

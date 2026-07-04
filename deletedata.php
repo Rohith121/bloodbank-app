@@ -109,7 +109,7 @@ table, th, td {
           <div class="find-donor-hero section-container">
             <div class="find-donor-max-width max-content-container">
               <div class="find-donor-content-container">
-                <span class="find-donor-text">LTI Blood Bank</span>
+                <span class="find-donor-text">Adtech Blood Bank</span>
                 <a href="find-donor.php" class="find-donor-navlink">
                   <div class="find-donor-card">
                     <h4 class="find-donor-text01 heading4">Find Donor</h4>
