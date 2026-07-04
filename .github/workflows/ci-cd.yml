@@ -6,16 +6,11 @@ on:
       - master
 
 env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  APP_IMAGE: blood-bankapp
-  DB_IMAGE: blood-bankdb
-  NAMESPACE: bloodbank
+  DOCKER_REPOSITORY: ${{ vars.DOCKER_REPOSITORY }}
+  APP_IMAGE: ${{ vars.APP_IMAGE }}
+  NAMESPACE: ${{ vars.NAMESPACE }}
 
 jobs:
-
-####################################
-# Build
-####################################
 
   build:
 
@@ -26,61 +21,41 @@ jobs:
 
     steps:
 
-    - name: Checkout
+    - name: Checkout Source
       uses: actions/checkout@v4
 
     - name: Generate Image Tag
       id: tag
       run: |
-        TAG=$(date +'%Y%m%d').${{ github.run_number }}
+        TAG=$(date +'%Y%m%d').${{ github.run_number }}-${GITHUB_SHA::7}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
 
-    - name: Docker Login
+    - name: Login to Docker Hub
       run: |
         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
         -u "${{ secrets.DOCKER_USERNAME }}" \
         --password-stdin
 
-####################################
-# Build App
-####################################
-
-    - name: Build App Image
+    - name: Build Docker Image
       run: |
         docker build \
-        -t $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} \
-        -t $DOCKER_USERNAME/$APP_IMAGE:v1 .
+          -t $DOCKER_REPOSITORY/$APP_IMAGE:${{ steps.tag.outputs.image_tag }} \
+          -t $DOCKER_REPOSITORY/$APP_IMAGE:latest .
 
-####################################
-# Push App
-####################################
-
-    - name: Push App Image
+    - name: Push Docker Images
       run: |
-        docker push $DOCKER_USERNAME/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
-        docker push $DOCKER_USERNAME/$APP_IMAGE:v1
-
-####################################
-# Build DB
-####################################
-
-    - name: Build DB Image
+        docker push $DOCKER_REPOSITORY/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_REPOSITORY/$APP_IMAGE:latest
+    - name: build Docker image for db 
       run: |
         docker build \
-        -t $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
-        -t $DOCKER_USERNAME/$DB_IMAGE:v1 \
-        ./database
-
-####################################
-# Push DB
-####################################
-
-    - name: Push DB Image
+           -t $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
+           -t $DOCKER_REPOSITORY/$DB_IMAGE:v1 \
+           ./database
+    - name:
       run: |
-        docker push $DOCKER_USERNAME/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
-        docker push $DOCKER_USERNAME/$DB_IMAGE:v1
-
-############################################################
+        docker push $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_REPOSITORY/$DB_IMAGE:v1
 
   deploy:
 
@@ -93,29 +68,15 @@ jobs:
 
     steps:
 
-####################################
-# Checkout
-####################################
-
-    - uses: actions/checkout@v4
-
-####################################
-# Configure SSH
-####################################
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Configure SSH
       run: |
         mkdir -p ~/.ssh
-
         echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
-
         chmod 600 ~/.ssh/id_rsa
-
         ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
-
-####################################
-# Deploy App
-####################################
 
     - name: Deploy Application
       run: |
@@ -123,7 +84,7 @@ jobs:
         ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} << EOF
 
         kubectl set image deployment/bloodbank-app \
-        bloodbank-app=$DOCKER_USERNAME/$APP_IMAGE:$IMAGE_TAG \
+        bloodbank-app=$DOCKER_REPOSITORY/$APP_IMAGE:$IMAGE_TAG \
         -n $NAMESPACE
 
         kubectl rollout status deployment/bloodbank-app \
@@ -131,57 +92,16 @@ jobs:
 
         EOF
 
-####################################
-# Deploy DB
-####################################
-
-    - name: Deploy Database
-      run: |
-        ssh -o StrictHostKeyChecking=no \
-        ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} << EOF
-
-        kubectl set image statefulset/bloodbank-db \
-        mysql=$DOCKER_USERNAME/$DB_IMAGE:$IMAGE_TAG \
-        -n $NAMESPACE
-
-        kubectl rollout status statefulset/bloodbank-db \
-        -n $NAMESPACE
-
-        EOF
-
-####################################
-# Verify
-####################################
-
     - name: Verify Deployment
       run: |
         ssh -o StrictHostKeyChecking=no \
         ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} << EOF
 
-        echo "Pods"
         kubectl get pods -n $NAMESPACE
-
-        echo ""
-
-        echo "Services"
         kubectl get svc -n $NAMESPACE
-
-        echo ""
-
-        echo "Ingress"
         kubectl get ingress -n $NAMESPACE
 
-        echo ""
-
-        kubectl rollout status deployment/bloodbank-app -n $NAMESPACE
-
-        kubectl rollout status statefulset/bloodbank-db -n $NAMESPACE
-
         EOF
-
-####################################
-# Rollback
-####################################
 
     - name: Rollback
       if: failure()
