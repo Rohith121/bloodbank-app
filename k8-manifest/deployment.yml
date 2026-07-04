@@ -32,7 +32,7 @@ spec:
 
       - name: bloodbank-app
 
-        image: rohith35/blood-bankapp:v1
+        image: rohith35/blood-bankapp:latest
 
         imagePullPolicy: Always
 
