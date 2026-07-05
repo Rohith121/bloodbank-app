@@ -9,6 +9,7 @@ env:
   DOCKER_REPOSITORY: ${{ vars.DOCKER_REPOSITORY }}
   APP_IMAGE: ${{ vars.APP_IMAGE }}
   NAMESPACE: ${{ vars.NAMESPACE }}
+  DB_IMAGE: ${{ vars.DB_IMAGE }}
 
 jobs:
 
