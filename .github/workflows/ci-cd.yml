@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-
+  workflow_dispatch: 
 env:
   DOCKER_REPOSITORY: ${{ vars.DOCKER_REPOSITORY }}
   APP_IMAGE: ${{ vars.APP_IMAGE }}
