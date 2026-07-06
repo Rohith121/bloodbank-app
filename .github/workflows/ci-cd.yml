@@ -47,16 +47,16 @@ jobs:
       run: |
         docker push $DOCKER_REPOSITORY/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
         docker push $DOCKER_REPOSITORY/$APP_IMAGE:latest
-    - name: build Docker image for db 
-      run: |
-        docker build \
-           -t $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
-           -t $DOCKER_REPOSITORY/$DB_IMAGE:v1 \
-           ./database
-    - name:
-      run: |
-        docker push $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
-        docker push $DOCKER_REPOSITORY/$DB_IMAGE:v1
+    # - name: build Docker image for db 
+    #   run: |
+    #     docker build \
+    #        -t $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
+    #        -t $DOCKER_REPOSITORY/$DB_IMAGE:v1 \
+    #        ./database
+    # - name:
+    #   run: |
+    #     docker push $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
+    #     docker push $DOCKER_REPOSITORY/$DB_IMAGE:v1
 
   deploy:
 
