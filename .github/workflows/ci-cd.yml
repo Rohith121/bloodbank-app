@@ -30,6 +30,17 @@ jobs:
       run: |
         TAG=$(date +'%Y%m%d').${{ github.run_number }}-${GITHUB_SHA::7}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+        
+    ## DATABASE Detect 
+    - name: Detect Database Changes
+      id: changes
+      uses: dorny/paths-filter@v3
+
+      with:
+        filters: |
+          database:
+            - 'database/**'
+      
 
     - name: Login to Docker Hub
       run: |
@@ -47,16 +58,19 @@ jobs:
       run: |
         docker push $DOCKER_REPOSITORY/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
         docker push $DOCKER_REPOSITORY/$APP_IMAGE:latest
-    # - name: build Docker image for db 
-    #   run: |
-    #     docker build \
-    #        -t $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
-    #        -t $DOCKER_REPOSITORY/$DB_IMAGE:v1 \
-    #        ./database
-    # - name:
-    #   run: |
-    #     docker push $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
-    #     docker push $DOCKER_REPOSITORY/$DB_IMAGE:v1
+        
+    - name: build Docker image for db 
+      if: steps.changes.outputs.database == 'true'
+      run: |
+        docker build \
+           -t $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
+           -t $DOCKER_REPOSITORY/$DB_IMAGE:v1 \
+           ./database
+    - name:
+      if: steps.changes.outputs.database == 'true'    
+      run: |
+        docker push $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
+        docker push $DOCKER_REPOSITORY/$DB_IMAGE:v1
 
   deploy:
 
