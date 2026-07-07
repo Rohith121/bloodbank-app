@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - master
-
+  workflow_dispatch: 
 env:
   DOCKER_REPOSITORY: ${{ vars.DOCKER_REPOSITORY }}
   APP_IMAGE: ${{ vars.APP_IMAGE }}
   NAMESPACE: ${{ vars.NAMESPACE }}
+  DB_IMAGE: ${{ vars.DB_IMAGE }}
 
 jobs:
 
@@ -29,6 +30,17 @@ jobs:
       run: |
         TAG=$(date +'%Y%m%d').${{ github.run_number }}-${GITHUB_SHA::7}
         echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+        
+    ## DATABASE Detect 
+    - name: Detect Database Changes
+      id: changes
+      uses: dorny/paths-filter@v3
+
+      with:
+        filters: |
+          database:
+            - 'database/**'
+      
 
     - name: Login to Docker Hub
       run: |
@@ -46,70 +58,64 @@ jobs:
       run: |
         docker push $DOCKER_REPOSITORY/$APP_IMAGE:${{ steps.tag.outputs.image_tag }}
         docker push $DOCKER_REPOSITORY/$APP_IMAGE:latest
+        
     - name: build Docker image for db 
+      if: steps.changes.outputs.database == 'true'
       run: |
         docker build \
            -t $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }} \
            -t $DOCKER_REPOSITORY/$DB_IMAGE:v1 \
            ./database
     - name:
+      if: steps.changes.outputs.database == 'true'    
       run: |
         docker push $DOCKER_REPOSITORY/$DB_IMAGE:${{ steps.tag.outputs.image_tag }}
         docker push $DOCKER_REPOSITORY/$DB_IMAGE:v1
-
   deploy:
-
     needs: build
-
+  
     runs-on: self-hosted
-
+  
     env:
       IMAGE_TAG: ${{ needs.build.outputs.IMAGE_TAG }}
-
+  
     steps:
+  
+      - name: Checkout Source
+        uses: actions/checkout@v4
+  
+      - name: Deploy Application
+        run: |
+          ssh devops@192.168.1.218 << EOF
+  
+          kubectl set image deployment/bloodbank-app \
+          bloodbank-app=$DOCKER_REPOSITORY/$APP_IMAGE:$IMAGE_TAG \
+          -n $NAMESPACE
+  
+          kubectl rollout status deployment/bloodbank-app \
+          -n $NAMESPACE
+  
+          EOF
+  
+      - name: Verify Deployment
+        run: |
+          ssh devops@192.168.1.218 << EOF
+  
+          kubectl get pods -n $NAMESPACE
+          kubectl get svc -n $NAMESPACE
+          kubectl get ingress -n $NAMESPACE
+  
+          EOF
+  
+      - name: Rollback
+        if: failure()
+        run: |
+          ssh devops@192.168.1.218 << EOF
+  
+          kubectl rollout undo deployment/bloodbank-app \
+          -n $NAMESPACE
+  
+          EOF
 
-    - name: Checkout
-      uses: actions/checkout@v4
 
-    - name: Configure SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.MASTER_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.MASTER_HOST }} >> ~/.ssh/known_hosts
-
-    - name: Deploy Application
-      run: |
-        ssh -o StrictHostKeyChecking=no \
-        ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} << EOF
-
-        kubectl set image deployment/bloodbank-app \
-        bloodbank-app=$DOCKER_REPOSITORY/$APP_IMAGE:$IMAGE_TAG \
-        -n $NAMESPACE
-
-        kubectl rollout status deployment/bloodbank-app \
-        -n $NAMESPACE
-
-        EOF
-
-    - name: Verify Deployment
-      run: |
-        ssh -o StrictHostKeyChecking=no \
-        ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} << EOF
-
-        kubectl get pods -n $NAMESPACE
-        kubectl get svc -n $NAMESPACE
-        kubectl get ingress -n $NAMESPACE
-
-        EOF
-
-    - name: Rollback
-      if: failure()
-      run: |
-        ssh -o StrictHostKeyChecking=no \
-        ${{ secrets.MASTER_USERNAME }}@${{ secrets.MASTER_HOST }} << EOF
-
-        kubectl rollout undo deployment/bloodbank-app \
-        -n $NAMESPACE
-
-        EOF
+ 
