@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
-
+#metadata print the name of the deployment and namespace
 metadata:
   name: bloodbank-app
   namespace: bloodbank
   labels:
     app: bloodbank-app
-
+#spec tell about the number of replicas, strategy, selector and template for the deployment
 spec:
   replicas: 2
 
@@ -39,7 +39,7 @@ spec:
         ports:
         - containerPort: 80
 
-        envfrom:
+        envFrom:
         - configMapRef:
             name: bloodbank-config
             

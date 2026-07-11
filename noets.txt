@@ -1,0 +1,132 @@
+                    Kubernetes Cluster
+        ┌─────────────────────────────────────┐
+        │                                     │
+        │     Master Node                     │
+        │ ┌──────────────────────────────┐    │
+        │ │ kubelet                      │    │
+        │ │ kube-apiserver               │    │
+        │ │ etcd                         │    │
+        │ │ controller-manager           │    │
+        │ │ scheduler                    │    │
+        │ └──────────────────────────────┘    │
+        │                                     │
+        │     Worker Node 1                   │
+        │ ┌──────────────────────────────┐    │
+        │ │ kubelet                      │    │
+        │ │ kube-proxy                   │    │
+        │ │ Pods                         │    │
+        │ └──────────────────────────────┘    │
+        │                                     │
+        │     Worker Node 2                   │
+        │ ┌──────────────────────────────┐    │
+        │ │ kubelet                      │    │
+        │ │ kube-proxy                   │    │
+        │ │ Pods                         │    │
+        │ └──────────────────────────────┘    │
+        └─────────────────────────────────────┘
+
+                ▲             ▲
+                │             │
+      kube-state-metrics   Metrics Server
+      (Deployment)         (Deployment)
+                │             │
+                └──────┬──────┘
+                       │
+                  Prometheus
+                       │
+                    Grafana
+----------------------------------------
+
+kubelet is responsible for the pods in nodes 
+cmd - systemctl status kubelet
+
+2) kube-state-metrics : it is an deployed as deployments
+It can run on any node because Kubernetes schedules it like a normal application pod.
+cmd - kubectl get deployment -A
+
+3) metrics-server -> It also runs on one node, chosen by the Kubernetes scheduler.
+same is an deploymnet 
+to check the metrics-server: kubectl get deployment -n kube-system
+
+--------------------------------------------------------------------------------------------------------------------------------------
+| Component          | Master                                            | Worker                       | Type                        |
+| ------------------ | ------------------------------------------------- | ---------------------------- | --------------------------- |
+| kubelet            | ✅                                                | ✅                            | System service (every node) |
+| kube-proxy         | ❌ (or sometimes yes, depending on cluster config)| ✅                            | DaemonSet                   |
+| cAdvisor           | ✅ (inside kubelet)                               | ✅ (inside kubelet)           | Built into kubelet          |
+| kube-state-metrics | Usually 1 Pod                                     | Can be scheduled on any node | Deployment                  |
+| Metrics Server     | Usually 1 Pod                                     | Can be scheduled on any node | Deployment                  |
+| Prometheus         | Usually 1 Pod                                     | Can be scheduled on any node | Deployment/StatefulSet      |
+| Grafana            | Usually 1 Pod                                     | Can be scheduled on any node | Deployment                  |
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+
+"Where does Metrics Server run?"
+
+Answer:
+
+Metrics Server is deployed as a Kubernetes Deployment, typically with one replica. It runs as a pod scheduled by Kubernetes, not as a service installed on every node. It collects CPU and memory usage from the kubelets on all nodes.
+
+If they ask:
+
+"Where does kube-state-metrics run?"
+
+Answer:
+
+kube-state-metrics is also deployed as a Deployment, usually with one replica. It watches the Kubernetes API and exposes metrics about Kubernetes objects such as Pods, Deployments, StatefulSets, DaemonSets, and Nodes. It does not collect CPU or memory usage.
+--------------------------------------------------------
+
+Installation steps
+
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+helm repo add grafana https://grafana.github.io/helm-charts
+
+helm repo update 
+
+
+we can check in helm 
+cmd   helm list -A
+
+create the namespace for that  monitoring to isolation
+
+
+helm install monitoring prometheus-community/kube-prometheus-stack \
+-n monitoring \
+--create-namespace
+----------------------------------------
+port forwarding for promethues and grafana
+
+kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
+
+kubectl port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090 -n monitoring
+
+-----------------------
+kubectl get pods -n monitoring
+
+Expected output:
+
+NAME                                            STATUS
+alertmanager-monitoring-0                       Running
+monitoring-grafana-xxxxxxxx                     Running
+monitoring-kube-prometheus-operator-xxxx        Running
+monitoring-kube-state-metrics-xxxx              Running
+monitoring-prometheus-node-exporter-xxxx        Running
+prometheus-monitoring-kube-prometheus-0         Running
+
+
+----------------------------------------
+
+
+verfiy the svc 
+
+kubectl get svc -n monitoring
+
+Example:
+
+NAME                                        TYPE        PORT
+monitoring-grafana                          ClusterIP   80
+monitoring-kube-prometheus-prometheus       ClusterIP   9090
+alertmanager-operated                       ClusterIP   9093
+
+-------------------
